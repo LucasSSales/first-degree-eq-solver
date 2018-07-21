@@ -115,11 +115,11 @@ function formatStep() {
 function calculateXC(){
     let sepIdx = equation.findIndex((el) => el === '=');
     let eqWithoutX = [];
+    let lastXCoef = 0;
 
     for (let i = 0; i < equation.length; i++) {
         if (isNaN(equation[i]) && equation[i].match('x')) {
             let innerCoef = equation[i].match(/[0-9]+/);
-            console.log(equation[i], innerCoef);
             let multFactor = (innerCoef === null || innerCoef[0].length === 0 ? 1 : Number(innerCoef[0]));
             if (equation[i][0] === '-') {
                 multFactor *= -1;
@@ -131,9 +131,17 @@ function calculateXC(){
                 } else if (equation[i - 1] === '+') {
                     xCoefficient += multFactor;
                     eqWithoutX.pop();
-                } else {
+                } else if (equation[i - 1] === '-') {
                     eqWithoutX.pop();
                     xCoefficient -= multFactor;
+                } else {
+                    console.log(eqWithoutX.pop());
+                    const el = getCoefficientFromMultsAndDivs(eqWithoutX);
+                    if (equation[i - 1] === '*') {
+                        xCoefficient += multFactor * el;
+                    } else {
+                        xCoefficient += el / multFactor;
+                    }
                 }
             } else {
                 if (i === sepIdx + 1 ) {
@@ -141,11 +149,25 @@ function calculateXC(){
                 } else if (equation[i - 1] === '+') {
                     xCoefficient -= multFactor;
                     eqWithoutX.pop();
-                } else {
+                } else if (equation[i - 1] === '-') {
                     eqWithoutX.pop();
                     xCoefficient += multFactor;
+                } else {
+                    console.log(eqWithoutX.pop());
+                    const el = getCoefficientFromMultsAndDivs(eqWithoutX);
+                    if (equation[i - 1] === '*') {
+                        xCoefficient -= multFactor * el;
+                    } else {
+                        xCoefficient -= el / multFactor;
+                    }
                 }
             }
+
+            lastXCoef = xCoefficient - lastXCoef;
+        } else if ((equation[i] === '*' || equation[i] === '/') && equation[i - 1].match('x')) {
+            xCoefficient -= lastXCoef;
+
+            
         } else {
             eqWithoutX.push(equation[i]);
         }
@@ -161,6 +183,44 @@ function calculateXC(){
     }
 
     updateEquation([(Math.abs(xCoefficient) === 1 ? (xCoefficient < 0 ? '-' : '') : xCoefficient) + 'x'].concat(eqWithoutX));
+}
+
+function getCoefficientFromMultsAndDivs(eq) {
+    let nextEl, stack = [];
+    let multFactor = 1;
+
+    do {
+        nextEl = eq.pop();
+        if (nextEl === '-') {
+            multFactor = -1;
+        } else if (nextEl !== '+') {
+            stack.push(nextEl);
+        }
+    } while(nextEl !== '+' && nextEl !== '-' && nextEl !== '=' && eq.length > 0);
+
+    let res = stack.pop();
+    let op = undefined;
+    while (stack.length > 0) {
+        let el = stack.pop();
+
+        if (isNaN(el)) {
+            if (el === '-') {
+                multFactor = -1;
+            } else if (el !== '+') {
+                op = el;
+            }
+        } else {
+            if (op === '*') {
+                res = res * el;
+            } else if (op === '/') {
+                res = res / el;
+            }
+
+            op = undefined;
+        }
+    }
+
+    return res * multFactor;
 }
 
 function passElementsToSecondMember() {
